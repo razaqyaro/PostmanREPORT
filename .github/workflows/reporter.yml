@@ -1,25 +1,39 @@
-name: Build and Test
+# This workflow will help you to produce an HTML extra test results report
 
-on: pull_request
+name: Newman Tests
+on: [push, pull_request]
 
 jobs:
-  build:
-
-    name: Test on node ${{ matrix.node_version }} and ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        node_version: ['16']
-        os: [ubuntu-latest, macOS-latest]
-
+  test-api:
+    runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v1
-    - name: Use Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v1
-      with:
-        node-version: ${{ matrix.node-version }}
+    # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v2
+      
+   # INstall Node on the runner
+      - name: Install Node
+        uses: actions/setup-node@v2
+        with: 
+          node-version: '16.x'
+
+    
+    # Install the newman command line utility and also install the html extra reporter
+      - name: Install newman
+        run: |
+          npm install -g newman
+          npm install -g newman-reporter-htmlextra
+          
+    # Make directory to upload the test results
+      - name: Make Directory for results
+        run: mkdir -p testResults
         
-    - name: npm install, build and test
-      run: |
-        npm install
-        npm test
+   # Run the POSTMAN collection
+      - name: Run API Tests
+        run: newman run "Restful Booker BVT.postman_collection.json" -e Production.postman_environment.json -r htmlextra --reporter-htmlextra-export testResults/htmlreport.html || true
+
+    # Upload the contents of Test Results directory to workspace
+      - name: Output the run Details
+        uses: actions/upload-artifact@v2
+        with: 
+          name: RunReports
+          path: testResults
